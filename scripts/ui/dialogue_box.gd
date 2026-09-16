@@ -53,7 +53,7 @@ func _ready() -> void:
 	vbox.add_child(_text_label)
 
 	_hint_label = Label.new()
-	_hint_label.text = "[ SPACE ] CONTINUE"
+	_hint_label.text = "[ E ] CONTINUE"
 	_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_hint_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.65))
 	_hint_label.add_theme_font_size_override("font_size", 12)

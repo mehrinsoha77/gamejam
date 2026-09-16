@@ -12,6 +12,17 @@ extends LevelBase
 ## ResearchRoom [66,80] CorridorE [80,86]. Forward is +Z (player spawns
 ## facing PI, see LevelBase.spawn_player).
 
+## The Level 1 "challenge": a plain question/answer terminal (see
+## scripts/ui/quiz_ui.gd + scripts/systems/quiz_terminal.gd). Add more
+## questions here any time — each is {"question": ..., "answers": [one or
+## more accepted strings, case/whitespace-insensitive]}.
+const LEVEL1_QUIZ_QUESTIONS := [
+	{
+		"question": "What is the full form of BRS?",
+		"answers": ["BUET Robotics Society"],
+	},
+]
+
 var _puzzle_door: Door
 var _arena_enemies_alive: int = 0
 var _crawler_spawns := [Vector3(-3, 0.1, 51), Vector3(3, 0.1, 57)]
@@ -73,7 +84,7 @@ func _build_weapon_zone() -> void:
 
 # --------------------------------------------------------------- PUZZLE ----
 # PuzzleRoom center z=33 (span 26-40), open both ends; north exit gated by
-# _puzzle_door until the nav puzzle is solved.
+# _puzzle_door until the access quiz is answered correctly.
 func _build_puzzle_zone() -> void:
 	var wall_mat := EnvironmentGenerator.make_material(EnvironmentGenerator.COLOR_NEUTRAL_DARK)
 	var floor_mat := EnvironmentGenerator.make_material(EnvironmentGenerator.COLOR_NEUTRAL)
@@ -82,45 +93,18 @@ func _build_puzzle_zone() -> void:
 	EnvironmentGenerator.create_light(self, Vector3(0, 2.2, 38), Color(0.6, 0.65, 0.75), 0.9, 6.0)
 	EnvironmentGenerator.create_alien_growth(self, Vector3(3.2, 0.2, 29))
 
-	var conduit_plaque := Terminal.new()
-	conduit_plaque.name = "ConduitPlaque"
-	conduit_plaque.speaker = "MAINTENANCE PLAQUE"
-	conduit_plaque.once = false
-	conduit_plaque.lines = [
-		"EMERGENCY RECALIBRATION SEQUENCE — PRIMARY CONDUIT.",
-		"STAMPED VALUES: 2 — 4 — 1.",
-	]
-	conduit_plaque.position = Vector3(2.8, 1.3, 28)
-	add_child(conduit_plaque)
-
-	var nav_terminal := Terminal.new()
-	nav_terminal.name = "NavTerminal"
-	nav_terminal.slow_time = true
-	nav_terminal.lines = [
-		"Navigation system damaged.",
-		"Recalibrate the three dials to the conduit's stamped sequence.",
-	]
-	nav_terminal.position = Vector3(-2.8, 1.3, 28)
-	add_child(nav_terminal)
-
-	var puzzle := NavigationPuzzle.new()
-	puzzle.target_combination = [2, 4, 1]
-	add_child(puzzle)
-
-	for i in range(3):
-		var panel := PuzzlePanel.new()
-		panel.name = "PuzzlePanel%d" % i
-		panel.position = Vector3(-1.5 + i * 1.5, 1.2, 33)
-		add_child(panel)
-		puzzle.register_panel(panel)
+	var quiz := QuizTerminal.new()
+	quiz.name = "AccessQuiz"
+	quiz.questions = LEVEL1_QUIZ_QUESTIONS
+	quiz.position = Vector3(0, 1.3, 30)
+	add_child(quiz)
+	quiz.solved.connect(_on_puzzle_solved)
 
 	_puzzle_door = Door.new()
 	_puzzle_door.name = "PuzzleDoor"
 	_puzzle_door.locked = true
 	_puzzle_door.position = Vector3(0, 1.3, 40)
 	add_child(_puzzle_door)
-
-	puzzle.solved.connect(_on_puzzle_solved)
 
 	var post_puzzle_checkpoint := Checkpoint.new()
 	post_puzzle_checkpoint.spawn_id = "post_puzzle"
@@ -132,9 +116,7 @@ func _build_puzzle_zone() -> void:
 	EnvironmentGenerator.create_corridor(self, Vector3(0, 0, 43), 2.6, 2.6, 6.0, wall_mat)
 
 	if GameManager.level1_puzzle_solved:
-		for panel in puzzle.panels:
-			panel.enabled = false
-			panel.set_solved_visual(true)
+		quiz._solved = true
 		_puzzle_door.locked = false
 		_puzzle_door.open()
 
@@ -146,7 +128,7 @@ func _on_puzzle_solved() -> void:
 		[FreedomComponent.DOF.TRANS_X, FreedomComponent.DOF.TRANS_Z],
 		hud, "GROUND-PLANE TRANSLATION"
 	)
-	DialogueManager.say("Unauthorized recalibration accepted. Full lateral translation granted.", "AI SYSTEM")
+	DialogueManager.say("Access verified. Full lateral translation granted.", "AI SYSTEM")
 	_puzzle_door.force_unlock_and_open()
 	set_objective("KEEP MOVING. THE PATH IS OPEN NOW.")
 

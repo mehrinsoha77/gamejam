@@ -106,10 +106,14 @@ func _apply_progression_from_game_manager() -> void:
 	forward_only = not GameManager.reverse_movement_unlocked and not freedom_component.is_free(FreedomComponent.DOF.TRANS_Z)
 
 func _unhandled_input(event: InputEvent) -> void:
-	if DialogueManager.is_active():
-		return
 	if event is InputEventMouseMotion and _mouse_captured:
 		_look(event.relative)
+	# A dialogue line on screen never blocks looking/moving/interacting —
+	# only combat input is suppressed so you can't accidentally fire while
+	# reading a terminal. DialogueManager itself also treats "interact" as
+	# an advance/dismiss, so pressing E both reads on and clears the text.
+	if DialogueManager.is_active():
+		return
 	if event.is_action_pressed("interact"):
 		interaction_component.try_interact(self)
 	if event.is_action_pressed("fire_primary"):
@@ -137,12 +141,6 @@ func _look(relative: Vector2) -> void:
 		_camera_pivot.rotation.x = clampf(_camera_pivot.rotation.x, -PITCH_LIMIT, PITCH_LIMIT)
 
 func _physics_process(delta: float) -> void:
-	if DialogueManager.is_active():
-		velocity.x = move_toward(velocity.x, 0.0, ACCELERATION * delta)
-		velocity.z = move_toward(velocity.z, 0.0, ACCELERATION * delta)
-		move_and_slide()
-		return
-
 	if not zero_gravity and not is_on_floor():
 		velocity.y -= ProjectSettings.get_setting("physics/3d/default_gravity") * delta
 
